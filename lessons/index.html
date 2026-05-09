@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Procedural Terrain Engine — Lesson Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --ink: #0a0a0a;
+    --mid: #3a3a3a;
+    --lite: #9a9a8a;
+    --rule: #c8c4b8;
+    --accent: #0a0a0a;
+    --paper: #faf8f3;
+    --grid: rgba(10,10,10,0.06);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Grid paper background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 30px 30px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(10,10,10,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(10,10,10,0.025) 1px, transparent 1px);
+    background-size: 6px 6px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* ── TOP HEADER BAR ── */
+  .topbar {
+    border-bottom: 2px solid var(--ink);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 0;
+    margin-bottom: 0;
+    animation: slideDown 0.6s ease both;
+  }
+
+  .topbar-left {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--mid);
+    letter-spacing: 0.08em;
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .topbar-link {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--ink);
+    text-decoration: none;
+    letter-spacing: 0.08em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--ink);
+    padding: 4px 10px;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .topbar-link:hover { background: var(--ink); color: var(--bg); }
+
+  .topbar-link svg { width: 12px; height: 12px; }
+
+  /* ── HERO ── */
+  .hero {
+    border-bottom: 2px solid var(--ink);
+    padding: 48px 0 36px;
+    animation: slideDown 0.7s ease 0.1s both;
+  }
+
+  .hero-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--mid);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .hero-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  .hero h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(42px, 7vw, 82px);
+    line-height: 0.92;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+
+  .hero h1 span {
+    display: block;
+    font-size: clamp(22px, 3.5vw, 40px);
+    color: var(--mid);
+    letter-spacing: 0.05em;
+  }
+
+  .hero-sub {
+    margin-top: 24px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--mid);
+    max-width: 600px;
+    border-left: 3px solid var(--ink);
+    padding-left: 16px;
+  }
+
+  .hero-meta {
+    margin-top: 20px;
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--lite);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .meta-item strong {
+    display: block;
+    font-size: 13px;
+    color: var(--ink);
+    margin-bottom: 2px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+  }
+
+  /* ── WORKFLOW SECTION ── */
+  .section-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: var(--mid);
+    text-transform: uppercase;
+    margin: 48px 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-label .num {
+    background: var(--ink);
+    color: var(--bg);
+    font-size: 10px;
+    padding: 2px 7px;
+    letter-spacing: 0.1em;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  /* ── 4-STEP WORKFLOW CARDS ── */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border: 2px solid var(--ink);
+  }
+
+  .step {
+    padding: 28px 20px 24px;
+    border-right: 2px solid var(--ink);
+    position: relative;
+    background: var(--paper);
+    animation: fadeUp 0.5s ease both;
+    transition: background 0.2s;
+  }
+
+  .step:nth-child(1) { animation-delay: 0.2s; }
+  .step:nth-child(2) { animation-delay: 0.3s; }
+  .step:nth-child(3) { animation-delay: 0.4s; }
+  .step:nth-child(4) { animation-delay: 0.5s; }
+
+  .step:last-child { border-right: none; }
+
+  .step:hover { background: #eeeae0; }
+
+  .step-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 56px;
+    line-height: 1;
+    color: rgba(10,10,10,0.08);
+    position: absolute;
+    top: 12px;
+    right: 16px;
+  }
+
+  .step-icon {
+    width: 44px;
+    height: 44px;
+    border: 2px solid var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+
+  .step-icon svg { width: 22px; height: 22px; }
+
+  .step h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+    color: var(--ink);
+  }
+
+  .step-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--lite);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .step p {
+    font-size: 11px;
+    line-height: 1.65;
+    color: var(--mid);
+  }
+
+  .step-arrow {
+    position: absolute;
+    right: -14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--ink);
+    color: var(--bg);
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    z-index: 2;
+    font-family: monospace;
+  }
+
+  .step:last-child .step-arrow { display: none; }
+
+  /* ── MODULE GRID ── */
+  .modules {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    background: var(--ink);
+    border: 2px solid var(--ink);
+  }
+
+  .module {
+    background: var(--paper);
+    padding: 24px 20px;
+    animation: fadeUp 0.5s ease both;
+    transition: background 0.2s;
+  }
+
+  .module:hover { background: #eeeae0; }
+
+  .module:nth-child(1) { animation-delay: 0.15s; }
+  .module:nth-child(2) { animation-delay: 0.25s; }
+  .module:nth-child(3) { animation-delay: 0.35s; }
+  .module:nth-child(4) { animation-delay: 0.45s; }
+  .module:nth-child(5) { animation-delay: 0.55s; }
+
+  .module-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: var(--lite);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .module-tag::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border: 1.5px solid var(--ink);
+    transform: rotate(45deg);
+    flex-shrink: 0;
+  }
+
+  .module h4 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+
+  .module p {
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--mid);
+  }
+
+  /* ── TICKET UPLOAD SECTION ── */
+  .ticket-section {
+    border: 2px solid var(--ink);
+    background: var(--paper);
+    margin-top: 0;
+    animation: fadeUp 0.5s ease 0.3s both;
+  }
+
+  .ticket-header {
+    border-bottom: 2px solid var(--ink);
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .ticket-header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .ticket-header h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    letter-spacing: 0.05em;
+    color: var(--ink);
+  }
+
+  .ticket-header p {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--lite);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--ink);
+    animation: blink 1.4s ease infinite;
+  }
+
+  @keyframes blink {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.15; }
+  }
+
+  .ticket-body {
+    padding: 32px 28px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: start;
+  }
+
+  .upload-zone {
+    border: 2px dashed var(--ink);
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    position: relative;
+    background: transparent;
+    transition: background 0.2s, border-style 0.2s;
+  }
+
+  .upload-zone:hover,
+  .upload-zone.drag-over {
+    background: rgba(10,10,10,0.04);
+    border-style: solid;
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    width: 48px;
+    height: 48px;
+    border: 2px solid var(--ink);
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .upload-icon svg { width: 24px; height: 24px; }
+
+  .upload-zone h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+
+  .upload-zone p {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--lite);
+    letter-spacing: 0.1em;
+  }
+
+  #file-name-display {
+    margin-top: 14px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ink);
+    padding: 8px 12px;
+    border: 1px solid var(--rule);
+    background: rgba(10,10,10,0.03);
+    display: none;
+    word-break: break-all;
+    text-align: left;
+  }
+
+  .ticket-instructions {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .instruction-row {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .instruction-row:last-child { border-bottom: none; padding-bottom: 0; }
+
+  .instr-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    color: var(--ink);
+    line-height: 1;
+    min-width: 28px;
+  }
+
+  .instr-text h4 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--ink);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .instr-text p {
+    font-size: 11px;
+    color: var(--mid);
+    line-height: 1.6;
+  }
+
+  /* ── LAUNCH BUTTON ── */
+  .launch-bar {
+    border-top: 2px solid var(--ink);
+    padding: 20px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .launch-note {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--lite);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    max-width: 320px;
+    line-height: 1.5;
+  }
+
+  .btn-launch {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.1em;
+    background: var(--ink);
+    color: var(--bg);
+    border: 2px solid var(--ink);
+    padding: 14px 40px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-launch::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--bg);
+    transform: translateX(-101%);
+    transition: transform 0.25s ease;
+  }
+
+  .btn-launch:hover::before { transform: translateX(0); }
+  .btn-launch:hover { color: var(--ink); }
+
+  .btn-launch span, .btn-launch svg {
+    position: relative; z-index: 1;
+  }
+
+  .btn-launch:disabled {
+    background: transparent;
+    color: var(--rule);
+    border-color: var(--rule);
+    cursor: not-allowed;
+  }
+
+  .btn-launch:disabled::before { display: none; }
+
+  .btn-launch svg { width: 16px; height: 16px; }
+
+  /* ── LAYERS / DATA SPEC SECTION ── */
+  .layers-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    border: 2px solid var(--ink);
+  }
+
+  .layer-item {
+    padding: 18px 14px;
+    border-right: 1px solid var(--ink);
+    text-align: center;
+    animation: fadeUp 0.4s ease both;
+    background: var(--paper);
+    transition: background 0.2s;
+  }
+
+  .layer-item:last-child { border-right: none; }
+  .layer-item:hover { background: #eeeae0; }
+
+  .layer-item:nth-child(1) { animation-delay: 0.1s; }
+  .layer-item:nth-child(2) { animation-delay: 0.18s; }
+  .layer-item:nth-child(3) { animation-delay: 0.26s; }
+  .layer-item:nth-child(4) { animation-delay: 0.34s; }
+  .layer-item:nth-child(5) { animation-delay: 0.42s; }
+
+  .layer-depth {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--lite);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .layer-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+
+  .layer-bar {
+    height: 3px;
+    background: var(--ink);
+    margin: 10px auto 0;
+    transition: width 0.4s ease;
+  }
+
+  /* ── FAQ ROW ── */
+  .faq-list {
+    border: 2px solid var(--ink);
+    background: var(--paper);
+  }
+
+  .faq-item {
+    border-bottom: 1px solid var(--rule);
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .faq-item:last-child { border-bottom: none; }
+
+  .faq-q {
+    padding: 18px 24px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-transform: uppercase;
+    user-select: none;
+    transition: background 0.15s;
+  }
+
+  .faq-q:hover { background: rgba(10,10,10,0.04); }
+
+  .faq-q .faq-chevron {
+    font-size: 16px;
+    font-family: monospace;
+    color: var(--mid);
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+
+  .faq-item.open .faq-chevron { transform: rotate(45deg); }
+
+  .faq-a {
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--mid);
+    padding: 0 24px 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+  }
+
+  .faq-item.open .faq-a {
+    max-height: 200px;
+    padding: 0 24px 18px;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    border-top: 2px solid var(--ink);
+    margin-top: 60px;
+    padding: 24px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .footer-left {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--lite);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .footer-right {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--lite);
+    letter-spacing: 0.1em;
+  }
+
+  .footer-right a {
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: 1px solid var(--ink);
+    padding-bottom: 1px;
+  }
+
+  /* ── RULER DECORATION ── */
+  .ruler {
+    height: 20px;
+    border: 1px solid var(--rule);
+    border-top: 2px solid var(--ink);
+    background: repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 29px,
+      var(--rule) 29px,
+      var(--rule) 30px
+    );
+    position: relative;
+    margin-bottom: -2px;
+    overflow: hidden;
+  }
+
+  .ruler::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0; left: 0;
+    width: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 9px,
+      rgba(10,10,10,0.15) 9px,
+      rgba(10,10,10,0.15) 10px
+    );
+  }
+
+  /* ── CROSS MARKS ── */
+  .crosshair {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .crosshair::before, .crosshair::after {
+    content: '';
+    position: absolute;
+    background: var(--ink);
+  }
+  .crosshair::before { width: 1px; height: 100%; }
+  .crosshair::after { width: 100%; height: 1px; }
+
+  /* ── ALERTS ── */
+  .alert {
+    border: 1px solid var(--ink);
+    padding: 12px 18px;
+    font-size: 11px;
+    color: var(--mid);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: rgba(10,10,10,0.03);
+    margin-top: 16px;
+  }
+
+  .alert-icon {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    min-width: 18px;
+    color: var(--ink);
+  }
+
+  /* ── COORD LABEL ── */
+  .coord {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--rule);
+    letter-spacing: 0.08em;
+    text-align: right;
+    margin-top: 4px;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 720px) {
+    .steps { grid-template-columns: repeat(2, 1fr); }
+    .step { border-bottom: 2px solid var(--ink); }
+    .step:nth-child(2n) { border-right: none; }
+    .modules { grid-template-columns: 1fr 1fr; }
+    .ticket-body { grid-template-columns: 1fr; }
+    .layers-grid { grid-template-columns: repeat(3, 1fr); }
+    .layer-item:nth-child(3) { border-right: none; }
+    .layer-item:nth-child(4), .layer-item:nth-child(5) { border-top: 1px solid var(--ink); }
+    .step-arrow { display: none; }
+  }
+
+  @media (max-width: 480px) {
+    .steps { grid-template-columns: 1fr; }
+    .step { border-right: none !important; }
+    .modules { grid-template-columns: 1fr; }
+    .layers-grid { grid-template-columns: repeat(2, 1fr); }
+    .hero h1 { font-size: 38px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-left">webdesktools.github.io / ide / lessons / terrain-engine</div>
+    <div class="topbar-right">
+      <a href="https://webdesktools.github.io/ide/lessons/" class="topbar-link" target="_blank">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.66 7.66 0 012-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        GitHub Repo
+      </a>
+    </div>
+  </div>
+
+  <!-- HERO — compact title strip -->
+  <section class="hero">
+    <div class="hero-label">
+      <div class="crosshair"></div>
+      Lesson Portal — Interactive Terrain Engine Series
+    </div>
+    <h1>
+      Procedural Terrain Engine
+      <span>3D Reconstruction System Blueprint</span>
+    </h1>
+    <p class="hero-sub">
+      Upload your lesson PDF ticket to unlock the interactive terrain builder. Generate procedural 3D landscapes, export STL mesh files, and 3D print physical terrain models — all from your browser.
+    </p>
+    <div class="hero-meta">
+      <div class="meta-item"><strong>WEB + 3D</strong> Output Format</div>
+      <div class="meta-item"><strong>PDF Ticket</strong> Access System</div>
+      <div class="meta-item"><strong>STL Export</strong> Print-Ready Mesh</div>
+      <div class="meta-item"><strong>Browser-Based</strong> No Install Required</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════
+       TICKET GATE — TOP PRIORITY
+       ══════════════════════ -->
+  <div class="section-label" style="margin-top:36px;">
+    <span class="num" style="background:var(--ink);color:var(--bg);">ACCESS</span>
+    Ticket Gate — Upload Your PDF to Start the Lesson
+  </div>
+
+  <div class="ticket-section">
+    <div class="ticket-header">
+      <div class="ticket-header-left">
+        <div class="status-dot"></div>
+        <div>
+          <h2>Lesson Access Portal</h2>
+          <p>PDF Ticket Validation System — Secure Content Delivery</p>
+        </div>
+      </div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--lite);letter-spacing:0.1em;text-align:right;">
+        ENGINE v2.4.1<br>PROTOCOL: PDF-TOKEN
+      </div>
+    </div>
+
+    <!-- UPLOAD + LAUNCH ROW -->
+    <div style="padding:28px 28px 0;display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start;">
+
+      <!-- LEFT: UPLOAD ZONE -->
+      <div>
+        <div class="upload-zone" id="dropZone">
+          <input type="file" id="pdfInput" accept="application/pdf">
+          <div class="upload-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            </svg>
+          </div>
+          <h3>Drop Lesson PDF Here</h3>
+          <p>Click to browse — PDF files only</p>
+        </div>
+        <div id="file-name-display"></div>
+      </div>
+
+      <!-- RIGHT: WHAT HAPPENS NEXT -->
+      <div style="display:flex;flex-direction:column;gap:0;">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:0.14em;color:var(--lite);text-transform:uppercase;margin-bottom:14px;">What happens when you click Open</div>
+
+        <div style="display:flex;gap:12px;align-items:flex-start;padding-bottom:14px;border-bottom:1px solid var(--rule);">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--ink);line-height:1;min-width:24px;">1</div>
+          <div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11px;color:var(--ink);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;">PDF is decoded locally</div>
+            <div style="font-size:11px;color:var(--mid);line-height:1.55;">Your browser reads the numeric token embedded inside the PDF. No data is sent to any server.</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--rule);">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--ink);line-height:1;min-width:24px;">2</div>
+          <div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11px;color:var(--ink);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;">Terrain engine launches</div>
+            <div style="font-size:11px;color:var(--mid);line-height:1.55;">The full interactive 3D terrain builder opens in a new protected tab — no install, no plugins required.</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--rule);">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--ink);line-height:1;min-width:24px;">3</div>
+          <div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11px;color:var(--ink);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;">Build & export STL</div>
+            <div style="font-size:11px;color:var(--mid);line-height:1.55;">Configure your terrain parameters inside the engine, then click "Download STL" to get a print-ready mesh file.</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:flex-start;padding-top:14px;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--ink);line-height:1;min-width:24px;">4</div>
+          <div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11px;color:var(--ink);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;">Slice & print</div>
+            <div style="font-size:11px;color:var(--mid);line-height:1.55;">Open the STL in Cura, PrusaSlicer, or Bambu Studio. Send to any FDM 3D printer. Build volume ≥ 150×150×50 mm recommended.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- PROTECTED NOTE + LAUNCH BUTTON -->
+    <div class="launch-bar" style="margin-top:20px;">
+      <div class="alert" style="flex:1;margin-top:0;">
+        <span class="alert-icon">!</span>
+        <span>Content is protected. Once unlocked, the lesson runs in a secure browser session — right-click, text selection, and dev tools are disabled by design.</span>
+      </div>
+      <button class="btn-launch" id="openBtn" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/>
+        </svg>
+        <span>OPEN LESSON ENGINE</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════
+       FULL WORKFLOW STEPS
+       ══════════════════════ -->
+  <div class="section-label">
+    <span class="num">§01</span> Complete Workflow — From PDF to Physical 3D Model
+  </div>
+
+  <div class="ruler"></div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+        </svg>
+      </div>
+      <h3>Upload Lesson PDF</h3>
+      <div class="step-tag">Source Material Input</div>
+      <p>Get your lesson PDF from the GitHub repo. It contains a unique access token as embedded numeric sequences. Upload it using the ticket gate above.</p>
+      <div class="step-arrow">→</div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/>
+        </svg>
+      </div>
+      <h3>Open HTML Code</h3>
+      <div class="step-tag">System Logic Initiation</div>
+      <p>The portal decodes the PDF token and opens the full terrain engine in your browser as a secure blob session. No downloads, no installation required.</p>
+      <div class="step-arrow">→</div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <h3>Download 3D STL</h3>
+      <div class="step-tag">Geometric Output Mesh</div>
+      <p>Configure terrain parameters inside the engine — noise, erosion, biomes. Export a high-resolution STL mesh file ready for direct slicing.</p>
+      <div class="step-arrow">→</div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">04</div>
+      <div class="step-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M3 9h18M9 21V9"/>
+          <circle cx="15" cy="15" r="2"/>
+        </svg>
+      </div>
+      <h3>Print 3D Model</h3>
+      <div class="step-tag">Physical Reconstruction</div>
+      <p>Slice the STL in Cura, PrusaSlicer, or Bambu Studio. Print on any FDM machine. Manufacture a physical terrain sample on an industrial-grade or desktop printer.</p>
+    </div>
+  </div>
+
+  <!-- DATA LAYERS -->
+  <div class="section-label">
+    <span class="num">§02</span> Underlying Logic Layers — Data Architecture
+  </div>
+
+  <div class="layers-grid">
+    <div class="layer-item">
+      <div class="layer-depth">Layer 01</div>
+      <div class="layer-name">Bedrock</div>
+      <div class="layer-bar" style="width:90%"></div>
+    </div>
+    <div class="layer-item">
+      <div class="layer-depth">Layer 02</div>
+      <div class="layer-name">Water Table</div>
+      <div class="layer-bar" style="width:72%"></div>
+    </div>
+    <div class="layer-item">
+      <div class="layer-depth">Layer 03</div>
+      <div class="layer-name">Elevation Data</div>
+      <div class="layer-bar" style="width:85%"></div>
+    </div>
+    <div class="layer-item">
+      <div class="layer-depth">Layer 04</div>
+      <div class="layer-name">Biome Maps</div>
+      <div class="layer-bar" style="width:60%"></div>
+    </div>
+    <div class="layer-item">
+      <div class="layer-depth">Layer 05</div>
+      <div class="layer-name">Asset Integration</div>
+      <div class="layer-bar" style="width:50%"></div>
+    </div>
+  </div>
+
+  <!-- SYSTEM MODULES -->
+  <div class="section-label">
+    <span class="num">§03</span> Engine Modules — Active System Components
+  </div>
+
+  <div class="modules">
+    <div class="module">
+      <div class="module-tag">Astrophysics Module</div>
+      <h4>Nested Noise Fields & Planetary Simulation</h4>
+      <p>Multi-octave Perlin/Simplex noise stacked to simulate realistic planetary crust formation, atmospheric erosion cycles, and large-scale topographic variance.</p>
+    </div>
+    <div class="module">
+      <div class="module-tag">Hydrology Module</div>
+      <h4>Erosion & Sediment Transport Model</h4>
+      <p>Hydraulic erosion simulation using sinuosity and meander algorithms. Implements a real-time data feedback loop to progressively refine riverbeds and valley carving.</p>
+    </div>
+    <div class="module">
+      <div class="module-tag">Ecosystem Engine</div>
+      <h4>Species Competition & Biome Definition</h4>
+      <p>Rule-based biome placement driven by elevation and moisture maps. Assets (trees, rocks, shrubs) are placed via spatial competition logic with configurable density parameters.</p>
+    </div>
+    <div class="module">
+      <div class="module-tag">Planetmics Module</div>
+      <h4>Object Pose & System Toraltion</h4>
+      <p>Manages global coordinate transforms, object poise feedback, and rotation system for planetary-scale terrain alignment and tectonic simulation offsets.</p>
+    </div>
+    <div class="module">
+      <div class="module-tag">Water Physics</div>
+      <h4>Elevation-Based Sediment Transport</h4>
+      <p>Calculates downstream sediment deposition using elevation gradients. Particles accumulate in depressions and are redistributed dynamically based on slope thresholds.</p>
+    </div>
+    <div class="module">
+      <div class="module-tag">System Logic</div>
+      <h4>Dynamic Data Flow — Not Static Lines</h4>
+      <p>All module connections operate as live data channels. HTML code interpretation bridges the visual engine to the underlying procedural logic graph in real time.</p>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div class="section-label">
+    <span class="num">§04</span> Common Questions
+  </div>
+
+  <div class="faq-list">
+    <div class="faq-item">
+      <div class="faq-q">
+        Where do I get the lesson PDF ticket?
+        <span class="faq-chevron">+</span>
+      </div>
+      <div class="faq-a">All lesson PDFs are available in the GitHub repository at webdesktools.github.io/ide/lessons/. Each lesson has its own PDF file. Download the one that matches the module you want to study.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">
+        Why does validation fail on my PDF?
+        <span class="faq-chevron">+</span>
+      </div>
+      <div class="faq-a">Make sure you are using the original unmodified PDF downloaded directly from the repository. Printing to PDF, re-saving, or compressing the file will destroy the embedded token and invalidate the ticket. Always use the original download.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">
+        What 3D printer is required?
+        <span class="faq-chevron">+</span>
+      </div>
+      <div class="faq-a">Any FDM (Fused Deposition Modeling) printer works — desktop machines like Bambu Lab, Prusa, Creality, or industrial units. The exported STL is a standard mesh file compatible with all major slicers. A build volume of at least 150×150×50 mm is recommended for terrain models.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">
+        Can I save or copy the lesson content?
+        <span class="faq-chevron">+</span>
+      </div>
+      <div class="faq-a">The lesson engine runs in a protected mode that disables right-click menus, text selection, and browser developer tools. Only the STL export function is enabled. This protects the course IP while giving you the physical output you need.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q">
+        Does this work offline?
+        <span class="faq-chevron">+</span>
+      </div>
+      <div class="faq-a">PDF validation is fully local — no server call is made. The terrain engine itself is self-contained HTML/JS delivered from the PDF token. Once the lesson tab is open, it runs entirely in your browser without any internet connection needed.</div>
+    </div>
+  </div>
+
+  <!-- COORD -->
+  <div class="coord">0,099 ls — SCALE 0 ——————— 1200 ———————— 2500</div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-left">
+      © Procedural Terrain Engine — Educational Use Only<br>
+      Protected Content Delivery System v2.4.1
+    </div>
+    <div class="footer-right">
+      Source: <a href="https://webdesktools.github.io/ide/lessons/" target="_blank">webdesktools.github.io/ide/lessons/</a>
+    </div>
+  </div>
+
+</div>
+
+<!-- LOGIC -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.9.179/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.9.179/pdf.worker.min.js';
+
+const pdfInput    = document.getElementById('pdfInput');
+const openBtn     = document.getElementById('openBtn');
+const fileDisplay = document.getElementById('file-name-display');
+const dropZone    = document.getElementById('dropZone');
+
+// File picker
+pdfInput.onchange = (e) => {
+  const f = e.target.files[0];
+  if (f) {
+    fileDisplay.style.display = 'block';
+    fileDisplay.textContent = '✓ ' + f.name;
+    openBtn.disabled = false;
+    openBtn.querySelector('span').textContent = 'OPEN LESSON ENGINE';
+  }
+};
+
+// Drag & drop
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') {
+    const dt = new DataTransfer();
+    dt.items.add(f);
+    pdfInput.files = dt.files;
+    fileDisplay.style.display = 'block';
+    fileDisplay.textContent = '✓ ' + f.name;
+    openBtn.disabled = false;
+    openBtn.querySelector('span').textContent = 'OPEN LESSON ENGINE';
+  }
+});
+
+// Open lesson
+openBtn.onclick = async () => {
+  const file = pdfInput.files[0];
+  if (!file) return;
+
+  openBtn.disabled = true;
+  openBtn.querySelector('span').textContent = 'DECODING TOKEN…';
+
+  try {
+    const buf  = await file.arrayBuffer();
+    const pdf  = await pdfjsLib.getDocument({ data: buf }).promise;
+    let raw = '';
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page    = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      raw += content.items.map(it => it.str.replace(/\s+/g, '')).join('');
+    }
+
+    const digits = raw.replace(/[^0-9]/g, '');
+    let html = '';
+    for (let i = 0; i < digits.length; i += 8) {
+      const code = parseInt(digits.substring(i, i + 8), 10);
+      if (!isNaN(code)) html += String.fromCharCode(code);
+    }
+
+    if (html.length < 10) throw new Error('Invalid ticket — decoded content too short. Please use the original unmodified PDF.');
+
+    const shield = `<script>
+      document.addEventListener('contextmenu', e => e.preventDefault());
+      document.addEventListener('selectstart', e => e.preventDefault());
+      document.onkeydown = e => {
+        if (e.keyCode == 123 || (e.ctrlKey && [85, 83, 73, 74].includes(e.keyCode))) {
+          return false;
+        }
+      };
+      setInterval(() => { debugger; }, 100);
+      if (window.location.protocol === 'view-source:') {
+        window.location.href = 'about:blank';
+      }
+      console.log("%cKorumalı İzleme Modu Aktif", "color:cyan; font-size:20px; font-weight:bold;");
+    <\/script>
+    <style>body { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }</style>`;
+
+    const blob = new Blob([shield + html], { type: 'text/html;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const win  = window.open(url, '_blank');
+
+    if (!win) {
+      alert('Pop-up blocked. Please allow pop-ups for this site and try again.');
+    }
+
+    openBtn.disabled = false;
+    openBtn.querySelector('span').textContent = 'OPEN LESSON ENGINE';
+
+  } catch (err) {
+    alert('Error: ' + err.message);
+    openBtn.disabled = false;
+    openBtn.querySelector('span').textContent = 'RETRY';
+  }
+};
+
+// FAQ accordion
+document.querySelectorAll('.faq-q').forEach(q => {
+  q.addEventListener('click', () => {
+    const item = q.parentElement;
+    const wasOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+    if (!wasOpen) item.classList.add('open');
+  });
+});
+</script>
+</body>
+</html>
