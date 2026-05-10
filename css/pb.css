@@ -123,41 +123,25 @@ header {
 }
 
 .masonry-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 1.5rem;
   max-width: 1400px;
   margin: 0 auto;
   padding: 1rem;
 }
 
-/* MOBİL → 1 KOLON (default) */
-.masonry-grid .col {
-  width: 100%;
-}
-
-/* TABLET → 2 KOLON */
+/* TABLET → 2 kolon */
 @media (min-width: 768px) {
-  .masonry-grid .col {
-    width: calc(50% - 0.75rem);
-  }
-}
-
-/* DESKTOP → 3 KOLON */
-@media (min-width: 1200px) {
-  .masonry-grid .col {
-    width: calc(33.333% - 1rem);
-  }
-}
-
-/* ULTRA WIDE (opsiyonel ama önerilir) → yine 3 kolon sabit */
-@media (min-width: 1600px) {
   .masonry-grid {
-    max-width: 1600px;
+    grid-template-columns: repeat(2, 1fr);
   }
+}
 
-  .masonry-grid .col {
-    width: calc(33.333% - 1rem);
+/* DESKTOP → 3 kolon */
+@media (min-width: 1200px) {
+  .masonry-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
